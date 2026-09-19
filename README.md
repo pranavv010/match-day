@@ -1,16 +1,16 @@
-# Live Scores ⚽
+# Match Day
 
 ![Android](https://img.shields.io/badge/Platform-Android-brightgreen.svg)
 ![Kotlin](https://img.shields.io/badge/Language-Kotlin-blue.svg)
 ![Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-orange.svg)
 ![License](https://img.shields.io/badge/License-GPL--3.0-lightgrey.svg)
 
-**Live Scores** is a production-grade Android application designed for elite football enthusiasts. It provides a focused, high-performance experience by strictly prioritizing top-tier European leagues and major international tournaments, stripping away the noise of minor global competitions.
+**Match Day** is a production-grade Android application designed for elite football enthusiasts. It provides a focused, high-performance experience by strictly prioritizing top-tier European leagues and major international tournaments, stripping away the noise of minor global competitions.
 
 ---
 
 ## ⬇️Download the App here 👇
-https://github.com/eddardstark687-rgb/live-scores/releases/download/v1.1/app-release.apk
+https://github.com/pranavv010/match-day/archive/refs/tags/v1.2.zip
 
 ## 🌟 Features
 
