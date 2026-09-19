@@ -8,16 +8,47 @@ plugins {
     alias(libs.plugins.google.services)
 }
 
-val localProperties = Properties()
-val localPropertiesFile = rootProject.file("local.properties")
-if (localPropertiesFile.exists()) {
-    localProperties.load(localPropertiesFile.inputStream())
+// ── Load .env file (gitignored) ────────────────────────────────────────────
+// .env takes precedence over local.properties
+fun loadEnv(): Properties {
+    val props = Properties()
+    val localFile = rootProject.file("local.properties")
+    if (localFile.exists()) {
+        localFile.inputStream().use { props.load(it) }
+    }
+    val envFile = rootProject.file(".env")
+    if (envFile.exists()) {
+        envFile.inputStream().use { props.load(it) }
+    }
+    return props
 }
 
-val apiKeyPrimary = localProperties.getProperty("API_KEY_PRIMARY") ?: ""
-val apiKeyBackup1 = localProperties.getProperty("API_KEY_BACKUP_1") ?: ""
-val apiKeyBackup2 = localProperties.getProperty("API_KEY_BACKUP_2") ?: ""
-val geminiApiKey = localProperties.getProperty("GEMINI_API_KEY") ?: ""
+val env = loadEnv()
+val apiKeyPrimary = env.getProperty("API_KEY_PRIMARY") ?: ""
+val apiKeyBackup1 = env.getProperty("API_KEY_BACKUP_1") ?: ""
+val apiKeyBackup2 = env.getProperty("API_KEY_BACKUP_2") ?: ""
+val geminiApiKey = env.getProperty("GEMINI_API_KEY") ?: ""
+
+// ── Version from git tag ──────────────────────────────────────────────────
+fun gitCommitCount(): Int {
+    return try {
+        val proc = ProcessBuilder("git", "rev-list", "--count", "HEAD")
+            .directory(rootProject.projectDir)
+            .redirectErrorStream(true)
+            .start()
+        proc.inputStream.bufferedReader().readLine().trim().toIntOrNull() ?: 1
+    } catch (e: Exception) { 1 }
+}
+
+fun gitHash(): String {
+    return try {
+        val proc = ProcessBuilder("git", "rev-parse", "--short", "HEAD")
+            .directory(rootProject.projectDir)
+            .redirectErrorStream(true)
+            .start()
+        proc.inputStream.bufferedReader().readLine().trim()
+    } catch (e: Exception) { "unknown" }
+}
 
 android {
     namespace = "com.pitchpulse"
@@ -27,20 +58,35 @@ android {
         applicationId = "com.pitchpulse"
         minSdk = 24
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = gitCommitCount()
+        versionName = "1.2.${gitCommitCount()}"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        
+
         buildConfigField("String", "API_KEY_PRIMARY", "\"$apiKeyPrimary\"")
         buildConfigField("String", "API_KEY_BACKUP_1", "\"$apiKeyBackup1\"")
         buildConfigField("String", "API_KEY_BACKUP_2", "\"$apiKeyBackup2\"")
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
+        buildConfigField("String", "GIT_HASH", "\"${gitHash()}\"")
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file("keystore/release.keystore")
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+            keyAlias = System.getenv("KEY_ALIAS") ?: ""
+            keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+        }
     }
 
     buildTypes {
-        release {
+        debug {
             isMinifyEnabled = false
+        }
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -56,11 +102,21 @@ android {
         compose = true
         buildConfig = true
     }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {
     coreLibraryDesugaring(libs.android.desugarJdkLibs)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.process)

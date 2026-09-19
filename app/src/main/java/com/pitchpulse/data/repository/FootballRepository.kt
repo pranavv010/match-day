@@ -9,6 +9,7 @@ import com.pitchpulse.data.local.entity.MatchEntity
 import com.pitchpulse.data.model.Lineup
 import com.pitchpulse.data.model.Match
 import com.pitchpulse.data.model.MatchStatistics
+import com.pitchpulse.data.model.TrackedLeagues
 import com.pitchpulse.data.model.StatItem
 import com.pitchpulse.data.remote.FootballApi
 import com.pitchpulse.data.remote.dto.FixtureWrapperDto
@@ -35,8 +36,20 @@ private const val STALE_MILLIS     = 60 * 60 * 1000L  // 1 hour – non-live dat
 private const val LIVE_REFRESH_MILLIS = 2 * 60 * 1000L   // 2 minutes – live throttle
 private const val COOLDOWN_MILLIS  = 5 * 60 * 1000L   // 5 minutes – retry after failure
 private const val FAVORITE_SYNC_THROTTLE = 15 * 60 * 1000L // 15 minutes
+private const val STATS_REFRESH_MILLIS = 5 * 60 * 1000L  // 5 minutes – stats refresh for live matches
 
 class ApiException(message: String) : Exception(message)
+
+/** Returns true when the API-Sports error string signals a quota/rate-limit exhaustion. */
+private fun isQuotaError(errStr: String?): Boolean {
+    if (errStr == null || errStr == "[]" || errStr.isBlank()) return false
+    val lower = errStr.lowercase()
+    return lower.contains("request limit") ||
+        lower.contains("rate limit") ||
+        lower.contains("you have reached") ||
+        // handles the map toString: {requests=You have reached...}
+        (lower.contains("requests") && (lower.contains("limit") || lower.contains("plan") || lower.contains("reached")))
+}
 
 class FootballRepository(
     private val api: FootballApi,
@@ -55,26 +68,7 @@ class FootballRepository(
 
     private var lastFavoriteSyncTime = 0L
 
-    companion object {
-        private val WHITELISTED_CLUB_LEAGUES = setOf(
-            39, 45, 48, 46,             // England: Premier League, FA Cup, League Cup, Community Shield
-            140, 143, 141,              // Spain: LaLiga, Copa del Rey, Supercopa
-            135, 137, 549,              // Italy: Serie A, Coppa Italia, Supercoppa
-            61, 66, 65,                 // France: Ligue 1, Coupe de France, Trophée des Champions
-            78, 81, 529,                // Germany: Bundesliga, DFB Pokal, DFL-Supercup
-            2, 3, 848                   // UEFA: Champions League, Europa League, Conference League
-        )
-        private val WHITELISTED_NATIONAL_TOURS = setOf(
-            1,                          // World Cup
-            4, 5, 33,                   // UEFA: Euro, Nations League, Qualifiers
-            13, 22, 31,                 // CONCACAF: Nations League, Gold Cup, Qualifiers
-            9, 30,                      // CONMEBOL: Copa America, Qualifiers
-            10                          // International Friendlies
-        )
-    }
-
-    internal fun isLeagueAllowed(leagueId: Int) =
-        leagueId in WHITELISTED_CLUB_LEAGUES || leagueId in WHITELISTED_NATIONAL_TOURS
+    internal fun isLeagueAllowed(leagueId: Int) = TrackedLeagues.isTracked(leagueId)
 
     // ── Public API ─────────────────────────────────────────────────────────────
 
@@ -174,6 +168,10 @@ class FootballRepository(
                 val errStr = response.errors?.toString()
                 if (errStr != null && errStr != "[]") {
                     Log.e(TAG, "[$date] API REPORTED ERROR: $errStr")
+                    if (isQuotaError(errStr)) {
+                        Log.w(TAG, "[$date] Quota error from JSON body → rotating key")
+                        com.pitchpulse.core.network.RetrofitClient.rotateKey()
+                    }
                     throw ApiException(errStr)
                 }
 
@@ -238,6 +236,10 @@ class FootballRepository(
             val errStr = rawResponse.errors?.toString()
             if (errStr != null && errStr != "[]") {
                 Log.e(TAG, "API returned errors for team info $teamId: $errStr")
+                if (isQuotaError(errStr)) {
+                    Log.w(TAG, "getTeamInfo: Quota error → rotating key")
+                    com.pitchpulse.core.network.RetrofitClient.rotateKey()
+                }
             }
 
             val response = rawResponse.response.firstOrNull() ?: run {
@@ -309,6 +311,10 @@ class FootballRepository(
             val errStr = rawResponse.errors?.toString()
             if (errStr != null && errStr != "[]") {
                 Log.e(TAG, "API Errors for team $teamId: $errStr")
+                if (isQuotaError(errStr)) {
+                    Log.w(TAG, "getTeamFixtures: Quota error → rotating key")
+                    com.pitchpulse.core.network.RetrofitClient.rotateKey()
+                }
             }
 
             // 2. Dynamic Season Fallback - if next/last was empty or blocked, try the full current season
@@ -474,6 +480,10 @@ class FootballRepository(
             val errStr = response.errors?.toString()
             if (errStr != null && errStr != "[]") {
                 Log.e(TAG, "SyncFixtureDetails API ERROR: $errStr")
+                if (isQuotaError(errStr)) {
+                    Log.w(TAG, "syncFixtureDetails: Quota error → rotating key")
+                    com.pitchpulse.core.network.RetrofitClient.rotateKey()
+                }
                 return@withContext
             }
 
@@ -492,16 +502,26 @@ class FootballRepository(
 
     suspend fun getLineups(fixtureId: Int): List<Lineup> = withContext(Dispatchers.IO) {
         try {
+            // Lineups never change during a match — once cached, always serve from cache.
+            // This eliminates repeated API calls for every live match on every poll cycle.
             val cached = dao.getLineups(fixtureId)
-            val match = dao.getMatchById(fixtureId)
-            
-            if (cached != null && match?.isLive == false) {
+            if (cached != null) {
+                Log.d(TAG, "Lineups CACHE HIT for fixture $fixtureId (cached at ${cached.lastUpdated})")
                 return@withContext cached.lineups
             }
 
             if (!checkQuota()) return@withContext emptyList()
+            Log.d(TAG, "Lineups CACHE MISS for fixture $fixtureId — calling API")
             val response = api.getLineups(fixtureId).response.map { it.toDomain() }
             trackCall()
+
+            // Debug: log position and grid for each player
+            response.forEach { lineup ->
+                Log.d(TAG, "Lineup ${lineup.teamName} (${lineup.formation}):")
+                lineup.startXI.forEach { p ->
+                    Log.d(TAG, "  #${p.number} ${p.name} | pos=${p.position} | grid=${p.grid}")
+                }
+            }
             
             if (response.isNotEmpty()) {
                 dao.insertLineups(LineupEntity(fixtureId, response))
@@ -517,14 +537,27 @@ class FootballRepository(
 
     suspend fun getStatistics(fixtureId: Int): MatchStatistics = withContext(Dispatchers.IO) {
         try {
+            // For finished matches: always serve from cache (stats are final).
+            // For live matches: only re-fetch if stats are older than STATS_REFRESH_MILLIS.
             val cached = dao.getStatistics(fixtureId)
             val match = dao.getMatchById(fixtureId)
+            val isFinishedMatch = match?.time == "FT"
 
-            if (cached != null && match?.isLive == false) {
+            if (cached != null && isFinishedMatch) {
+                Log.d(TAG, "Stats CACHE HIT (finished match) for fixture $fixtureId")
                 return@withContext cached.statistics
             }
 
-            if (!checkQuota()) return@withContext MatchStatistics(emptyList(), emptyList())
+            if (cached != null) {
+                val age = System.currentTimeMillis() - cached.lastUpdated
+                if (age < STATS_REFRESH_MILLIS) {
+                    Log.d(TAG, "Stats CACHE HIT (throttled ${age / 1000}s / ${STATS_REFRESH_MILLIS / 1000}s) for fixture $fixtureId")
+                    return@withContext cached.statistics
+                }
+                Log.d(TAG, "Stats STALE (${age / 1000}s old) for fixture $fixtureId — refreshing")
+            }
+
+            if (!checkQuota()) return@withContext (cached?.statistics ?: MatchStatistics(emptyList(), emptyList()))
             val dtos = api.getStatistics(fixtureId).response
             trackCall()
             val stats = if (dtos.size >= 2) {
@@ -555,6 +588,10 @@ class FootballRepository(
             val errStr = response.errors?.toString()
             if (errStr != null && errStr != "[]") {
                 Log.e(TAG, "API SEARCH ERROR: $errStr")
+                if (isQuotaError(errStr)) {
+                    Log.w(TAG, "searchTeams: Quota error → rotating key")
+                    com.pitchpulse.core.network.RetrofitClient.rotateKey()
+                }
             }
             response.response.map { it.team }
         } catch (e: CancellationException) {
@@ -628,19 +665,28 @@ class FootballRepository(
         dao.clearMetadata()
     }
 
+    companion object {
+        private val apiFormat = object : ThreadLocal<SimpleDateFormat>() {
+            override fun initialValue() = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US)
+        }
+        private val timeFormatter = object : ThreadLocal<SimpleDateFormat>() {
+            override fun initialValue() = SimpleDateFormat("hh:mm a", Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("Asia/Kolkata")
+            }
+        }
+        private val istDateFormatter = object : ThreadLocal<SimpleDateFormat>() {
+            override fun initialValue() = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("Asia/Kolkata")
+            }
+        }
+    }
+
     private fun FixtureWrapperDto.toEntity(reqDate: String, isFavorite: Boolean): MatchEntity {
-        val apiFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US)
-        val timeFormatter = SimpleDateFormat("hh:mm a", Locale.US)
-        timeFormatter.timeZone = TimeZone.getTimeZone("Asia/Kolkata")
-        
-        val date = apiFormat.parse(fixture.date) ?: Date()
-        
-        val istDateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-        istDateFormatter.timeZone = TimeZone.getTimeZone("Asia/Kolkata")
-        val localDateString = istDateFormatter.format(date)
+        val date = apiFormat.get()?.parse(fixture.date) ?: Date()
+        val localDateString = istDateFormatter.get()?.format(date) ?: reqDate
 
         val displayTime = when (fixture.status.short) {
-            "NS", "TBD" -> timeFormatter.format(date)
+            "NS", "TBD" -> timeFormatter.get()?.format(date) ?: "TBD"
             "FT", "AET", "PEN" -> "FT"
             else -> fixture.status.elapsed?.let { "${it}'" } ?: fixture.status.short
         }
@@ -658,7 +704,8 @@ class FootballRepository(
                 player = eventDto.player.name ?: "Unknown",
                 minute = eventDto.time.elapsed + (eventDto.time.extra ?: 0),
                 type = type,
-                teamId = eventDto.team.id
+                teamId = eventDto.team.id,
+                assist = eventDto.assist?.name
             )
         }
 
@@ -681,6 +728,8 @@ class FootballRepository(
             time = displayTime,
             isLive = fixture.status.short in listOf("1H", "HT", "2H", "ET", "P", "BT"),
             competition = league.name,
+            leagueId = league.id,
+            leagueLogo = league.logo,
             isFavoriteLeague = isFavorite,
             dateString = localDateString,
             events = matchEvents
@@ -690,33 +739,51 @@ class FootballRepository(
     private suspend fun checkQuota(): Boolean = withContext(Dispatchers.IO) {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         val today = dateFormat.format(Date())
-        val usage = dao.getApiUsage(today)
-        
-        if (usage == null) {
-            dao.insertApiUsage(com.pitchpulse.data.local.entity.ApiUsageEntity(today, 0))
-            return@withContext true
-        }
-        
-        // Multi-key support: 95 calls per key
-        val currentKeyLimit = (com.pitchpulse.core.network.RetrofitClient.getActiveKeyIndex() + 1) * 95
-        
-        if (usage.callCount >= currentKeyLimit) {
-            Log.w(TAG, "API QUOTA REACHED for current key. Attempting rotation...")
-            com.pitchpulse.core.network.RetrofitClient.rotateKey()
-            
-            // Re-check after rotation
-            val newLimit = (com.pitchpulse.core.network.RetrofitClient.getActiveKeyIndex() + 1) * 95
-            if (usage.callCount >= newLimit) {
-                Log.e(TAG, "ALL API KEYS EXHAUSTED for today.")
-                return@withContext false
+        val rc = com.pitchpulse.core.network.RetrofitClient
+        val MAX_CALLS_PER_KEY = 95
+
+        // Each key gets its own counter: "yyyy-MM-dd_0", "yyyy-MM-dd_1", "yyyy-MM-dd_2"
+        fun keyedDate() = "${today}_${rc.getActiveKeyIndex()}"
+
+        // Loop through keys — if current key is exhausted, rotate and check next.
+        // This prevents a wasted API call when the next key is also exhausted.
+        repeat(3) {
+            var usage = dao.getApiUsage(keyedDate())
+            if (usage == null) {
+                val legacyUsage = if (rc.getActiveKeyIndex() == 0) dao.getApiUsage(today) else null
+                val initialCount = legacyUsage?.callCount ?: 0
+                dao.insertApiUsage(
+                    com.pitchpulse.data.local.entity.ApiUsageEntity(keyedDate(), initialCount)
+                )
+                usage = dao.getApiUsage(keyedDate())
+                if (initialCount > 0) {
+                    Log.d(TAG, "Migrated legacy counter: key-0 starts at $initialCount calls")
+                }
+            }
+
+            val callCount = usage?.callCount ?: 0
+            if (callCount >= MAX_CALLS_PER_KEY) {
+                Log.w(TAG, "QUOTA REACHED for key ${rc.getActiveKeyIndex()} ($callCount/$MAX_CALLS_PER_KEY). Rotating...")
+                val rotated = rc.rotateKey()
+                if (!rotated) {
+                    Log.e(TAG, "ALL API KEYS EXHAUSTED for today.")
+                    return@withContext false
+                }
+            } else {
+                // Current key has capacity — good to go
+                return@withContext true
             }
         }
-        true
+
+        Log.e(TAG, "ALL API KEYS EXHAUSTED after checking all ${rc.getActiveKeyIndex() + 1} keys.")
+        false
     }
 
     private suspend fun trackCall() = withContext(Dispatchers.IO) {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         val today = dateFormat.format(Date())
-        dao.incrementApiUsage(today)
+        val keyedDate = "${today}_${com.pitchpulse.core.network.RetrofitClient.getActiveKeyIndex()}"
+        dao.incrementApiUsage(keyedDate)
+        Log.v(TAG, "trackCall → $keyedDate")
     }
 }

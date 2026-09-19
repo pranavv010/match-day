@@ -14,11 +14,25 @@
 }
 -keep interface kotlinx.serialization.** { *; }
 
-# Keep all data models and API interfaces from being obfuscated 
-# (This is what caused the API data to disappear/crash in the release build!)
+# Keep all data models and API interfaces from being obfuscated
 -keep class com.pitchpulse.data.model.** { *; }
 -keep class com.pitchpulse.data.remote.** { *; }
+-keep class com.pitchpulse.data.local.entity.** { *; }
 
 # OkHttp
 -keep class okhttp3.** { *; }
 -keep class okio.** { *; }
+
+# Room
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class *
+-dontwarn androidx.room.paging.**
+
+# Firebase
+-keep class com.google.firebase.messaging.** { *; }
+
+# Coil
+-dontwarn coil3.**
+
+# Keep BuildConfig
+-keep class com.pitchpulse.BuildConfig { *; }

@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
     <style name="Theme.LiveScores" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.LiveScores.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#000000</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/match_day__2_</item>
+        <item name="windowSplashScreenAnimationDuration">300</item>
+        <item name="postSplashScreenTheme">@style/Theme.LiveScores</item>
+    </style>
 </resources>

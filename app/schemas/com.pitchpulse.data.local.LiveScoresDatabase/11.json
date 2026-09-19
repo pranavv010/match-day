@@ -1,0 +1,408 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 11,
+    "identityHash": "e91fbcb09ae1527a9c24b93e2b223219",
+    "entities": [
+      {
+        "tableName": "matches",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `homeTeam` TEXT NOT NULL, `homeTeamId` INTEGER NOT NULL, `homeTeamLogo` TEXT, `awayTeam` TEXT NOT NULL, `awayTeamId` INTEGER NOT NULL, `awayTeamLogo` TEXT, `homeScore` INTEGER, `awayScore` INTEGER, `time` TEXT NOT NULL, `isLive` INTEGER NOT NULL, `competition` TEXT NOT NULL, `leagueId` INTEGER NOT NULL, `leagueLogo` TEXT, `isFavoriteLeague` INTEGER NOT NULL, `dateString` TEXT NOT NULL, `events` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "homeTeam",
+            "columnName": "homeTeam",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "homeTeamId",
+            "columnName": "homeTeamId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "homeTeamLogo",
+            "columnName": "homeTeamLogo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "awayTeam",
+            "columnName": "awayTeam",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "awayTeamId",
+            "columnName": "awayTeamId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "awayTeamLogo",
+            "columnName": "awayTeamLogo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "homeScore",
+            "columnName": "homeScore",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "awayScore",
+            "columnName": "awayScore",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "time",
+            "columnName": "time",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isLive",
+            "columnName": "isLive",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "competition",
+            "columnName": "competition",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "leagueId",
+            "columnName": "leagueId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "leagueLogo",
+            "columnName": "leagueLogo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isFavoriteLeague",
+            "columnName": "isFavoriteLeague",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateString",
+            "columnName": "dateString",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "events",
+            "columnName": "events",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "favorite_teams",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`teamId` INTEGER NOT NULL, `name` TEXT NOT NULL, `logoUrl` TEXT, PRIMARY KEY(`teamId`))",
+        "fields": [
+          {
+            "fieldPath": "teamId",
+            "columnName": "teamId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "logoUrl",
+            "columnName": "logoUrl",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "teamId"
+          ]
+        }
+      },
+      {
+        "tableName": "fetch_metadata",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`date` TEXT NOT NULL, `lastFetchTime` INTEGER NOT NULL, `lastFetchAttemptTime` INTEGER NOT NULL, `lastLiveFetchTime` INTEGER NOT NULL, `hasLiveMatches` INTEGER NOT NULL, PRIMARY KEY(`date`))",
+        "fields": [
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastFetchTime",
+            "columnName": "lastFetchTime",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastFetchAttemptTime",
+            "columnName": "lastFetchAttemptTime",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastLiveFetchTime",
+            "columnName": "lastLiveFetchTime",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hasLiveMatches",
+            "columnName": "hasLiveMatches",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "date"
+          ]
+        }
+      },
+      {
+        "tableName": "team_details",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `name` TEXT NOT NULL, `logo` TEXT, `country` TEXT, `founded` INTEGER, `isNational` INTEGER NOT NULL, `venueName` TEXT, `venueCity` TEXT, `venueCapacity` INTEGER, `venueImage` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "logo",
+            "columnName": "logo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "country",
+            "columnName": "country",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "founded",
+            "columnName": "founded",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "isNational",
+            "columnName": "isNational",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "venueName",
+            "columnName": "venueName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "venueCity",
+            "columnName": "venueCity",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "venueCapacity",
+            "columnName": "venueCapacity",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "venueImage",
+            "columnName": "venueImage",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "lineups",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`fixtureId` INTEGER NOT NULL, `lineups` TEXT NOT NULL, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`fixtureId`))",
+        "fields": [
+          {
+            "fieldPath": "fixtureId",
+            "columnName": "fixtureId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lineups",
+            "columnName": "lineups",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "fixtureId"
+          ]
+        }
+      },
+      {
+        "tableName": "statistics",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`fixtureId` INTEGER NOT NULL, `statistics` TEXT NOT NULL, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`fixtureId`))",
+        "fields": [
+          {
+            "fieldPath": "fixtureId",
+            "columnName": "fixtureId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "statistics",
+            "columnName": "statistics",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "fixtureId"
+          ]
+        }
+      },
+      {
+        "tableName": "api_usage",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`day` TEXT NOT NULL, `callCount` INTEGER NOT NULL, PRIMARY KEY(`day`))",
+        "fields": [
+          {
+            "fieldPath": "day",
+            "columnName": "day",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "callCount",
+            "columnName": "callCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "day"
+          ]
+        }
+      },
+      {
+        "tableName": "suggested_teams",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`teamId` INTEGER NOT NULL, `name` TEXT NOT NULL, `logo` TEXT NOT NULL, `dateString` TEXT NOT NULL, PRIMARY KEY(`teamId`))",
+        "fields": [
+          {
+            "fieldPath": "teamId",
+            "columnName": "teamId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "logo",
+            "columnName": "logo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateString",
+            "columnName": "dateString",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "teamId"
+          ]
+        }
+      },
+      {
+        "tableName": "home_daily_content",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`dateString` TEXT NOT NULL, `contentJson` TEXT NOT NULL, `fetchedAt` INTEGER NOT NULL, PRIMARY KEY(`dateString`))",
+        "fields": [
+          {
+            "fieldPath": "dateString",
+            "columnName": "dateString",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contentJson",
+            "columnName": "contentJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fetchedAt",
+            "columnName": "fetchedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "dateString"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e91fbcb09ae1527a9c24b93e2b223219')"
+    ]
+  }
+}

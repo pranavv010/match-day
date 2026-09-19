@@ -19,6 +19,8 @@ data class MatchEntity(
     val time: String,
     val isLive: Boolean,
     val competition: String,
+    val leagueId: Int = 0,
+    val leagueLogo: String? = null,
     val isFavoriteLeague: Boolean,
     val dateString: String,
     val events: List<MatchEvent> = emptyList()
@@ -38,6 +40,8 @@ data class MatchEntity(
             date = dateString,
             isLive = isLive,
             competition = competition,
+            leagueId = leagueId,
+            leagueLogo = leagueLogo,
             isFavoriteLeague = isFavoriteLeague,
             events = events
         )

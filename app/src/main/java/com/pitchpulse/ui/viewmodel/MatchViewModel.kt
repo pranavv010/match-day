@@ -10,7 +10,9 @@ import com.pitchpulse.core.network.RetrofitClient
 import com.pitchpulse.core.util.DateObserver
 import com.pitchpulse.data.local.LiveScoresDatabase
 import com.pitchpulse.data.model.Match
+import com.pitchpulse.data.model.TrackedLeagues
 import com.pitchpulse.data.repository.FootballRepository
+import com.pitchpulse.ui.state.MatchFilters
 import com.pitchpulse.ui.state.MatchUiState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -42,6 +44,9 @@ class MatchViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow<MatchUiState>(MatchUiState.Loading)
     val uiState: StateFlow<MatchUiState> = _uiState.asStateFlow()
+
+    private val _searchQuery = MutableStateFlow("")
+    private val _activeFilters = MutableStateFlow(MatchFilters())
 
     // Upcoming fixtures for favorite teams — loaded separately, not inside the main flow
     private val _favoriteUpcoming = MutableStateFlow<List<Match>>(emptyList())
@@ -96,34 +101,53 @@ class MatchViewModel(application: Application) : AndroidViewModel(application) {
      */
     private fun startDataObserver() {
         viewModelScope.launch {
-            _selectedDate
-                .flatMapLatest { date ->
-                    val coreFlow = combine(
-                        repository.getDailyMatches(date),
-                        repository.getFavoriteTeams().onStart { emit(emptyList()) },
-                        repository.getFavoriteMatches().onStart { emit(emptyList()) }
-                    ) { daily, teams, favMatches ->
-                        val filteredDaily = daily.filter { it.isFavoriteLeague }
-                        Triple(filteredDaily, teams, favMatches)
+            _selectedDate.flatMapLatest { date ->
+                val coreFlow = combine(
+                    repository.getDailyMatches(date),
+                    repository.getFavoriteTeams().onStart { emit(emptyList()) },
+                    repository.getFavoriteMatches().onStart { emit(emptyList()) }
+                ) { daily, teams, favMatches ->
+                    Triple(daily, teams, favMatches)
+                }
+
+                combine(
+                    coreFlow,
+                    _searchQuery,
+                    _activeFilters,
+                    availableDates,
+                    _favoriteUpcoming
+                ) { coreTuple, query, filters, dates, upcoming ->
+                    val (daily, teams, favMatches) = coreTuple
+                    val allLeaguesWithMatchesToday = daily.map { it.leagueId }.toSet()
+                    
+                    val filteredDaily = daily.filter { match ->
+                        val matchesQuery = query.isBlank() || 
+                                match.homeTeam.contains(query, ignoreCase = true) ||
+                                match.awayTeam.contains(query, ignoreCase = true) ||
+                                match.competition.contains(query, ignoreCase = true)
+                                
+                        val matchesLeagueFilter = filters.selectedLeagueIds.isEmpty() || filters.selectedLeagueIds.contains(match.leagueId)
+                        val matchesTeamFilter = filters.selectedTeamIds.isEmpty() || filters.selectedTeamIds.contains(match.homeTeamId) || filters.selectedTeamIds.contains(match.awayTeamId)
+                        
+                        matchesQuery && matchesLeagueFilter && matchesTeamFilter
                     }
 
-                    // Step 2: combine with dates ribbon + upcoming favorites
-                    coreFlow.combine(
-                        availableDates.combine(_favoriteUpcoming) { dates, upcoming ->
-                            Pair(dates, upcoming)
-                        }
-                    ) { (daily, teams, favMatches), (dates, upcoming) ->
-                        MatchUiState.Success(
-                            dailyMatches            = daily,
-                            favorites               = favMatches,
-                            favoriteTeams           = teams,
-                            favoriteUpcomingMatches = upcoming,
-                            selectedDate            = date,
-                            availableDates          = dates
-                        )
-                    }
+                    MatchUiState.Success(
+                        dailyMatches            = filteredDaily,
+                        favorites               = favMatches,
+                        favoriteTeams           = teams,
+                        favoriteUpcomingMatches = upcoming,
+                        selectedDate            = date,
+                        availableDates          = dates,
+                        searchQuery             = query,
+                        activeFilters           = filters,
+                        allTrackedLeagues       = TrackedLeagues.catalog.map { it.id to it.name },
+                        leaguesWithMatchesToday = allLeaguesWithMatchesToday
+                    )
                 }
-                .catch { e ->
+                .flowOn(kotlinx.coroutines.Dispatchers.Default)
+            }
+            .catch { e ->
                     if (e is CancellationException) throw e
                     Log.e(TAG, "Fatal data flow error: ${e.message}", e)
                     _uiState.value = MatchUiState.Error(e.message ?: "An unexpected error occurred")
@@ -221,7 +245,8 @@ class MatchViewModel(application: Application) : AndroidViewModel(application) {
     override fun onCleared() {
         super.onCleared()
         pollingJob?.cancel()
-        getApplication<Application>().unregisterActivityLifecycleCallbacks(lifecycleCallbacks)
+        val app = getApplication<Application>()
+        app.unregisterActivityLifecycleCallbacks(lifecycleCallbacks)
     }
 
     private suspend fun safeSync(date: String) {
@@ -275,5 +300,28 @@ class MatchViewModel(application: Application) : AndroidViewModel(application) {
                 dateFormat.format(dayCal.time)
             )
         }
+    }
+
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun toggleLeagueFilter(leagueId: Int) {
+        _activeFilters.update { current ->
+            val newLeagues = if (current.selectedLeagueIds.contains(leagueId)) {
+                current.selectedLeagueIds - leagueId
+            } else {
+                current.selectedLeagueIds + leagueId
+            }
+            current.copy(selectedLeagueIds = newLeagues)
+        }
+    }
+
+    fun applyFilters(filters: MatchFilters) {
+        _activeFilters.value = filters
+    }
+
+    fun clearFilters() {
+        _activeFilters.value = MatchFilters()
     }
 }

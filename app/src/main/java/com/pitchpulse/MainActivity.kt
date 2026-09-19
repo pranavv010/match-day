@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -16,11 +17,14 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.pitchpulse.ui.components.OfflineBanner
 import com.pitchpulse.ui.screens.HomeScreen
 import com.pitchpulse.ui.screens.MatchesScreen
 import com.pitchpulse.ui.theme.LiveScoresTheme
 import com.pitchpulse.ui.components.BottomNav
 import com.pitchpulse.ui.components.NavItem
+import com.pitchpulse.ui.state.MatchFilters
 
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -63,6 +67,7 @@ sealed class Screen(val route: String) {
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         scheduleBackgroundSync()
@@ -130,6 +135,10 @@ fun MainContent(navController: androidx.navigation.NavHostController, viewModel:
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    val context = LocalContext.current
+    val app = context.applicationContext as LiveScoresApp
+    val isOffline by app.networkObserver.isOnline.collectAsStateWithLifecycle(initialValue = true)
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
@@ -147,11 +156,14 @@ fun MainContent(navController: androidx.navigation.NavHostController, viewModel:
             }
         }
     ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = Screen.Home.route,
-            modifier = Modifier.padding(innerPadding)
-        ) {
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            OfflineBanner(isOffline = !isOffline)
+
+            NavHost(
+                navController = navController,
+                startDestination = Screen.Home.route,
+                modifier = Modifier.weight(1f)
+            ) {
             composable(Screen.Home.route) {
                 HomeScreen(
                     uiState = uiState,
@@ -175,7 +187,10 @@ fun MainContent(navController: androidx.navigation.NavHostController, viewModel:
                     },
                     onTeamClick = { id ->
                         navController.navigate(Screen.TeamDetail.createRoute(id))
-                    }
+                    },
+                    onSearchQueryChange = { viewModel.updateSearchQuery(it) },
+                    onApplyFilters = { viewModel.applyFilters(it) },
+                    onClearFilters = { viewModel.clearFilters() }
                 )
             }
             composable(Screen.Search.route) {
@@ -228,6 +243,7 @@ fun MainContent(navController: androidx.navigation.NavHostController, viewModel:
                     onBack = { navController.popBackStack() }
                 )
             }
+        }
         }
     }
 }

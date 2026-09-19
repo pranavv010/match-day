@@ -4,41 +4,72 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.pitchpulse.ui.components.DateRibbon
 import com.pitchpulse.ui.components.MatchCard
 import com.pitchpulse.ui.state.MatchUiState
+import com.pitchpulse.ui.state.MatchFilters
 import com.pitchpulse.ui.theme.AppBackground
 import com.pitchpulse.ui.theme.TextPrimary
 import com.pitchpulse.ui.theme.TextSecondary
+
+import com.pitchpulse.ui.components.MatchesTopBar
+import com.pitchpulse.ui.components.MatchFilterBottomSheet
 
 @Composable
 fun MatchesScreen(
     uiState: MatchUiState,
     onDateSelected: (String) -> Unit,
     onMatchClick: (Int) -> Unit,
-    onTeamClick: (Int) -> Unit
+    onTeamClick: (Int) -> Unit,
+    onSearchQueryChange: (String) -> Unit = {},
+    onApplyFilters: (MatchFilters) -> Unit = {},
+    onClearFilters: () -> Unit = {}
 ) {
+    var showFilters by remember { mutableStateOf(false) }
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = AppBackground
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Header
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Matches",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = TextPrimary
+            if (uiState is MatchUiState.Success) {
+                MatchesTopBar(
+                    searchQuery = uiState.searchQuery,
+                    onSearchQueryChange = onSearchQueryChange,
+                    onFilterClick = { showFilters = true },
+                    hasActiveFilters = uiState.activeFilters.selectedLeagueIds.isNotEmpty() || uiState.activeFilters.selectedTeamIds.isNotEmpty()
                 )
-                Text(
-                    text = "Daily Football Schedule",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TextSecondary
-                )
+                
+                if (showFilters) {
+                    MatchFilterBottomSheet(
+                        onDismissRequest = { showFilters = false },
+                        activeFilters = uiState.activeFilters,
+                        allTrackedLeagues = uiState.allTrackedLeagues,
+                        leaguesWithMatchesToday = uiState.leaguesWithMatchesToday,
+                        selectedDate = uiState.selectedDate,
+                        availableDates = uiState.availableDates,
+                        onDateSelected = onDateSelected,
+                        onApplyFilters = onApplyFilters,
+                        onClearFilters = onClearFilters
+                    )
+                }
+            } else {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Matches",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "Daily Football Schedule",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextSecondary
+                    )
+                }
             }
 
             when (uiState) {
@@ -48,13 +79,6 @@ fun MatchesScreen(
                     }
                 }
                 is MatchUiState.Success -> {
-                    // Date Selection Ribbon
-                    DateRibbon(
-                        dates = uiState.availableDates,
-                        selectedDate = uiState.selectedDate,
-                        onDateSelected = onDateSelected
-                    )
-
                     // Matches List
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
@@ -77,7 +101,10 @@ fun MatchesScreen(
                                 }
                             }
                         } else {
-                            items(uiState.dailyMatches) { match ->
+                            items(
+                                items = uiState.dailyMatches,
+                                key = { it.id }
+                            ) { match ->
                                 MatchCard(
                                     match = match,
                                     onClick = { onMatchClick(match.id) }

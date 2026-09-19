@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -51,10 +52,21 @@ fun SearchScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
 
+            var localSearchText by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(searchText) }
+            
+            androidx.compose.runtime.LaunchedEffect(searchText) {
+                if (searchText.isEmpty() && localSearchText.isNotEmpty()) {
+                    localSearchText = ""
+                }
+            }
+            
             // Redesigned Search Bar
             OutlinedTextField(
-                value = searchText,
-                onValueChange = { viewModel.onSearchTextChange(it) },
+                value = localSearchText,
+                onValueChange = { 
+                    localSearchText = it
+                    viewModel.onSearchTextChange(it) 
+                },
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = { 
                     Text(
@@ -65,8 +77,11 @@ fun SearchScreen(
                 },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary) },
                 trailingIcon = {
-                    if (searchText.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.onSearchTextChange("") }) {
+                    if (localSearchText.isNotEmpty()) {
+                        IconButton(onClick = { 
+                            localSearchText = ""
+                            viewModel.onSearchTextChange("") 
+                        }) {
                             Icon(Icons.Default.Close, contentDescription = "Clear", tint = TextSecondary)
                         }
                     }

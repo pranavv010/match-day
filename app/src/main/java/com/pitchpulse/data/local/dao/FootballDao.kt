@@ -19,7 +19,7 @@ interface FootballDao {
     @Query("SELECT * FROM matches WHERE isFavoriteLeague = 1 ORDER BY dateString DESC, id ASC")
     fun getFavoriteMatchesFlow(): Flow<List<MatchEntity>>
 
-    @Query("SELECT * FROM matches WHERE dateString = :date ORDER BY isFavoriteLeague DESC, id ASC")
+    @Query("SELECT * FROM matches WHERE dateString = :date AND isFavoriteLeague = 1 ORDER BY id ASC")
     fun getDailyMatchesFlow(date: String): Flow<List<MatchEntity>>
 
     @Query("SELECT * FROM matches WHERE dateString = :date")
@@ -114,6 +114,9 @@ interface FootballDao {
 
     @Query("SELECT * FROM home_daily_content WHERE dateString = :date LIMIT 1")
     suspend fun getHomeDailyContent(date: String): HomeDailyContentEntity?
+
+    @Query("SELECT * FROM home_daily_content ORDER BY dateString DESC LIMIT :limit")
+    suspend fun getRecentHomeContent(limit: Int = 365): List<HomeDailyContentEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertHomeDailyContent(content: HomeDailyContentEntity)

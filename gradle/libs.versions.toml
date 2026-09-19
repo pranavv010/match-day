@@ -22,10 +22,12 @@ googleServices = "4.4.2"
 firebaseBom = "33.10.0"
 workManager = "2.10.0"
 desugar_jdk_libs = "2.1.5"
+coreSplashscreen = "1.0.1"
 
 [libraries]
 android-desugarJdkLibs = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugar_jdk_libs" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }

@@ -1,7 +1,7 @@
-# PitchPulse - Product Requirements Document (PRD)
+# Live Scores - Product Requirements Document (PRD)
 
 ## 1. Product Overview & Vision
-PitchPulse is a production-grade Android application designed for elite football enthusiasts who demand accurate, real-time, and localized match data. The app provides a focused and high-performance experience by strictly prioritizing the world's top-tier European leagues and major international tournaments, stripping away the "noise" of minor global competitions.
+Live Scores is a production-grade Android application designed for elite football enthusiasts who demand accurate, real-time, and localized match data. The app provides a focused and high-performance experience by strictly prioritizing the world's top-tier European leagues and major international tournaments, stripping away the "noise" of minor global competitions.
 
 **Mission:** To provide the fastest, cleanest, and most reliable football match-tracking experience, tailored specifically for the Indian market with high-precision IST synchronization.
 

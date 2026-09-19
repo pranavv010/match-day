@@ -3,6 +3,11 @@ package com.pitchpulse.ui.state
 import com.pitchpulse.data.local.entity.FavoriteTeamEntity
 import com.pitchpulse.data.model.Match
 
+data class MatchFilters(
+    val selectedLeagueIds: Set<Int> = emptySet(),
+    val selectedTeamIds: Set<Int> = emptySet()
+)
+
 sealed class MatchUiState {
     object Loading : MatchUiState()
     
@@ -13,7 +18,11 @@ sealed class MatchUiState {
         val availableDates: List<Triple<String, String, String>> = emptyList(),
         val favoriteTeams: List<FavoriteTeamEntity> = emptyList(),
         val favoriteUpcomingMatches: List<Match> = emptyList(),
-        val lastUpdated: Long = 0L
+        val lastUpdated: Long = 0L,
+        val searchQuery: String = "",
+        val activeFilters: MatchFilters = MatchFilters(),
+        val allTrackedLeagues: List<Pair<Int, String>> = emptyList(),
+        val leaguesWithMatchesToday: Set<Int> = emptySet()
     ) : MatchUiState()
     
     data class Error(val message: String) : MatchUiState()

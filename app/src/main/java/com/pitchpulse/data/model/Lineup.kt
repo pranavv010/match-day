@@ -1,7 +1,9 @@
 package com.pitchpulse.data.model
 
+import androidx.compose.runtime.Immutable
 import kotlinx.serialization.Serializable
 
+@Immutable
 @Serializable
 data class Lineup(
     val teamName: String,
@@ -12,6 +14,7 @@ data class Lineup(
     val coachName: String?
 )
 
+@Immutable
 @Serializable
 data class LineupPlayer(
     val id: Int,

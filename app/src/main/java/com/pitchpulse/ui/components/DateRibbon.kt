@@ -1,5 +1,7 @@
 package com.pitchpulse.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -25,14 +27,9 @@ import com.pitchpulse.ui.theme.AppAccent
 import com.pitchpulse.ui.theme.TextPrimary
 import com.pitchpulse.ui.theme.TextSecondary
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.ui.draw.scale
-
 @Composable
 fun DateRibbon(
-    dates: List<Triple<String, String, String>>, // Day Name, Day Number, Full Date (Key)
+    dates: List<Triple<String, String, String>>,
     selectedDate: String,
     onDateSelected: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -42,7 +39,6 @@ fun DateRibbon(
     LaunchedEffect(selectedDate, dates) {
         val index = dates.indexOfFirst { it.third == selectedDate }
         if (index >= 0) {
-            // Subtracting 2 loosely centers the item in view
             listState.animateScrollToItem(maxOf(0, index - 2))
         }
     }
@@ -57,13 +53,12 @@ fun DateRibbon(
     ) {
         items(
             items = dates,
-            key = { it.third } // Use fullDate as unique key
+            key = { it.third }
         ) { (dayName, dayNumber, fullDate) ->
-            val isSelected = fullDate == selectedDate
             DateItem(
                 dayName = dayName,
                 dayNumber = dayNumber,
-                isSelected = isSelected,
+                isSelected = fullDate == selectedDate,
                 onClick = { onDateSelected(fullDate) }
             )
         }
@@ -77,30 +72,17 @@ private fun DateItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val backgroundColor by animateColorAsState(
+    // Single animation instead of 4
+    val bgColor by animateColorAsState(
         targetValue = if (isSelected) AppAccent else Color.Transparent,
-        animationSpec = tween(300),
-        label = "BgColor"
+        animationSpec = tween(200),
+        label = "Bg"
     )
-    val textColor by animateColorAsState(
-        targetValue = if (isSelected) Color.Black else TextPrimary,
-        animationSpec = tween(300),
-        label = "TextColor"
-    )
-    val labelColor by animateColorAsState(
-        targetValue = if (isSelected) AppAccent else TextSecondary,
-        animationSpec = tween(300),
-        label = "LabelColor"
-    )
-    val scale by animateFloatAsState(
-        targetValue = if (isSelected) 1.1f else 1f,
-        animationSpec = tween(300),
-        label = "Scale"
-    )
+    val textColor = if (isSelected) Color.Black else TextPrimary
+    val labelColor = if (isSelected) AppAccent else TextSecondary
 
     Column(
         modifier = Modifier
-            .scale(scale)
             .clip(CircleShape)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -112,16 +94,13 @@ private fun DateItem(
             color = labelColor,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
         )
-        
+
         Spacer(modifier = Modifier.height(4.dp))
-        
+
         Box(
             modifier = Modifier
                 .size(32.dp)
-                .background(
-                    color = backgroundColor,
-                    shape = CircleShape
-                ),
+                .background(color = bgColor, shape = CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Text(

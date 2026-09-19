@@ -77,11 +77,21 @@ fun HomeScreen(
             item {
                 HomeSectionTitle("Leagues Today")
             }
-            items(
-                items = extrasState.leagueSummaries,
-                key = { it.name }
-            ) { summary ->
-                LeagueTodayCard(summary = summary)
+            if (extrasState.leagueSummaries.isEmpty()) {
+                item {
+                    Text(
+                        text = "No major league or tournament matches today. Check back after the next sync.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary
+                    )
+                }
+            } else {
+                items(
+                    items = extrasState.leagueSummaries,
+                    key = { it.leagueId }
+                ) { summary ->
+                    LeagueTodayCard(summary = summary)
+                }
             }
 
             item {
@@ -93,9 +103,13 @@ fun HomeScreen(
                     extrasState.isLoadingContent -> HomeExtrasLoadingRow()
                     quiz != null -> FootballQuizCard(
                         quiz = quiz,
+                        questionNumber = extrasState.currentQuestionNumber,
+                        totalQuestions = extrasState.totalQuizQuestions,
+                        quizCompleted = extrasState.quizCompleted,
                         selectedOptionIndex = extrasState.selectedOptionIndex,
                         onOptionSelected = homeExtrasViewModel::onQuizOptionSelected,
-                        onNextQuestion = homeExtrasViewModel::nextQuizQuestion
+                        onNextQuestion = homeExtrasViewModel::nextQuizQuestion,
+                        onRestartQuiz = homeExtrasViewModel::restartQuiz
                     )
                     else -> Text(
                         text = extrasState.contentError ?: "Quiz unavailable right now.",
@@ -144,7 +158,10 @@ fun HomeScreen(
                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                                 contentPadding = PaddingValues(horizontal = 4.dp)
                             ) {
-                                items(uiState.favoriteTeams) { team ->
+                                items(
+                                    items = uiState.favoriteTeams,
+                                    key = { it.teamId }
+                                ) { team ->
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                         modifier = Modifier.clickable { onTeamClick(team.teamId) }
@@ -177,7 +194,10 @@ fun HomeScreen(
                         item {
                             HomeSectionTitle("Next for Your Teams")
                         }
-                        items(uiState.favoriteUpcomingMatches) { match ->
+                        items(
+                            items = uiState.favoriteUpcomingMatches,
+                            key = { it.id }
+                        ) { match ->
                             MatchCard(
                                 match = match,
                                 onClick = { onMatchClick(match.id) }

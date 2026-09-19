@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Pitch Pulse"
+rootProject.name = "Live Scores"
 include(":app")

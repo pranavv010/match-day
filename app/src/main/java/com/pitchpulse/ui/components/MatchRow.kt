@@ -1,33 +1,32 @@
 package com.pitchpulse.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.pitchpulse.core.ui.Dimens
-import com.pitchpulse.data.model.Match
-import com.pitchpulse.ui.theme.AppAccent
-import com.pitchpulse.ui.theme.TextPrimary
-import com.pitchpulse.ui.theme.TextSecondary
-
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.*
-import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import androidx.compose.ui.layout.ContentScale
-
-import androidx.compose.foundation.clickable
+import com.pitchpulse.core.ui.Dimens
+import com.pitchpulse.data.model.EventType
+import com.pitchpulse.data.model.Match
+import com.pitchpulse.data.model.MatchEvent
+import com.pitchpulse.ui.theme.AppAccent
+import com.pitchpulse.ui.theme.TextPrimary
+import com.pitchpulse.ui.theme.TextSecondary
 
 @Composable
 fun MatchRow(
@@ -38,6 +37,28 @@ fun MatchRow(
     onMatchClick: (Int) -> Unit = {},
     onTeamClick: (Int) -> Unit = {}
 ) {
+    val context = LocalContext.current
+
+    // Cache image requests
+    val homeLogoRequest = remember(match.homeTeamLogo) {
+        ImageRequest.Builder(context).data(match.homeTeamLogo).crossfade(true).build()
+    }
+    val awayLogoRequest = remember(match.awayTeamLogo) {
+        ImageRequest.Builder(context).data(match.awayTeamLogo).crossfade(true).build()
+    }
+
+    // Cache derived data
+    val homeScorers = remember(match.events, match.homeTeamId) {
+        match.events.filter { it.type == EventType.GOAL && it.teamId == match.homeTeamId }.take(2)
+    }
+    val awayScorers = remember(match.events, match.awayTeamId) {
+        match.events.filter { it.type == EventType.GOAL && it.teamId == match.awayTeamId }.take(2)
+    }
+    val hasGoals = remember(match.events) { homeScorers.isNotEmpty() || awayScorers.isNotEmpty() }
+    val dateShort = remember(match.date) { if (match.date.isNotEmpty()) match.date.substringAfter("-") else "" }
+    val isHomeFav = remember(match.homeTeamId, favoriteTeamIds) { match.homeTeamId in favoriteTeamIds }
+    val isAwayFav = remember(match.awayTeamId, favoriteTeamIds) { match.awayTeamId in favoriteTeamIds }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -61,9 +82,9 @@ fun MatchRow(
                     color = if (match.isLive) AppAccent else TextSecondary,
                     fontWeight = FontWeight.Bold
                 )
-                if (match.date.isNotEmpty()) {
+                if (dateShort.isNotEmpty()) {
                     Text(
-                        text = match.date.substringAfter("-"), // Show MM-dd
+                        text = dateShort,
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp),
                         color = TextSecondary.copy(alpha = 0.6f)
                     )
@@ -72,7 +93,7 @@ fun MatchRow(
 
             Spacer(modifier = Modifier.width(Dimens.SpacingMedium))
 
-            // Left Team (Home)
+            // Home
             Row(
                 modifier = Modifier
                     .weight(1f)
@@ -80,7 +101,6 @@ fun MatchRow(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.End
             ) {
-                val isHomeFav = match.homeTeamId in favoriteTeamIds
                 IconButton(
                     onClick = { onFavoriteToggle(match.homeTeamId, match.homeTeam, match.homeTeamLogo) },
                     modifier = Modifier.size(24.dp)
@@ -103,10 +123,7 @@ fun MatchRow(
                 )
                 Spacer(modifier = Modifier.width(Dimens.SpacingSmall))
                 AsyncImage(
-                    model = ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
-                        .data(match.homeTeamLogo)
-                        .crossfade(true)
-                        .build(),
+                    model = homeLogoRequest,
                     contentDescription = null,
                     modifier = Modifier.size(24.dp),
                     contentScale = ContentScale.Fit
@@ -125,7 +142,7 @@ fun MatchRow(
                 textAlign = TextAlign.Center
             )
 
-            // Right Team (Away)
+            // Away
             Row(
                 modifier = Modifier
                     .weight(1f)
@@ -134,10 +151,7 @@ fun MatchRow(
                 horizontalArrangement = Arrangement.Start
             ) {
                 AsyncImage(
-                    model = ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
-                        .data(match.awayTeamLogo)
-                        .crossfade(true)
-                        .build(),
+                    model = awayLogoRequest,
                     contentDescription = null,
                     modifier = Modifier.size(24.dp),
                     contentScale = ContentScale.Fit
@@ -152,7 +166,6 @@ fun MatchRow(
                     modifier = Modifier.weight(1f),
                     overflow = TextOverflow.Ellipsis
                 )
-                val isAwayFav = match.awayTeamId in favoriteTeamIds
                 IconButton(
                     onClick = { onFavoriteToggle(match.awayTeamId, match.awayTeam, match.awayTeamLogo) },
                     modifier = Modifier.size(24.dp)
@@ -167,8 +180,8 @@ fun MatchRow(
             }
         }
 
-        // Goal Scorers Row (below the main row)
-        if (match.events.any { it.type == com.pitchpulse.data.model.EventType.GOAL }) {
+        // Goal Scorers
+        if (hasGoals) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -176,39 +189,38 @@ fun MatchRow(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
-                // Home Scorers
                 Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
-                    match.events.filter { it.type == com.pitchpulse.data.model.EventType.GOAL && it.teamId == match.homeTeamId }
-                        .take(2)
-                        .forEach { event ->
-                            Text(
-                                text = "${event.player} ${event.minute}'",
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                color = TextSecondary.copy(alpha = 0.7f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
+                    homeScorers.forEach { event ->
+                        Text(
+                            text = scorerText(event),
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            color = TextSecondary.copy(alpha = 0.7f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(Dimens.SpacingMedium))
 
-                // Away Scorers
                 Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                    match.events.filter { it.type == com.pitchpulse.data.model.EventType.GOAL && it.teamId == match.awayTeamId }
-                        .take(2)
-                        .forEach { event ->
-                            Text(
-                                text = "${event.minute}' ${event.player}",
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                color = TextSecondary.copy(alpha = 0.7f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                textAlign = TextAlign.End
-                            )
-                        }
+                    awayScorers.forEach { event ->
+                        Text(
+                            text = scorerText(event, away = true),
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            color = TextSecondary.copy(alpha = 0.7f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.End
+                        )
+                    }
                 }
             }
         }
     }
+}
+
+private fun scorerText(event: MatchEvent, away: Boolean = false): String {
+    val base = if (away) "${event.minute}' ${event.player}" else "${event.player} ${event.minute}'"
+    return if (event.assist != null) "$base (a. ${event.assist})" else base
 }

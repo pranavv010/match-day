@@ -47,6 +47,7 @@ data class EventDto(
     val time: EventTimeDto,
     val team: TeamDto,
     val player: EventPlayerDto,
+    val assist: EventPlayerDto? = null,
     val type: String,
     val detail: String? = null
 )
@@ -169,8 +170,8 @@ data class StatsDto(
 data class LineupDto(
     val team: TeamDto,
     val formation: String? = null,
-    val startXI: List<LineupPlayerDto> = emptyList(),
-    val substitutes: List<LineupPlayerDto> = emptyList(),
+    val startXI: List<LineupPlayerListDto> = emptyList(),
+    val substitutes: List<LineupPlayerListDto> = emptyList(),
     val coach: CoachDto? = null
 )
 
@@ -178,8 +179,8 @@ fun LineupDto.toDomain(): Lineup = Lineup(
     teamName = team.name,
     teamLogo = team.logo,
     formation = formation,
-    startXI = startXI.map { it.toDomain() },
-    substitutes = substitutes.map { it.toDomain() },
+    startXI = startXI.map { it.player.toDomain() },
+    substitutes = substitutes.map { it.player.toDomain() },
     coachName = coach?.name
 )
 

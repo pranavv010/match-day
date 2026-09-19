@@ -7,9 +7,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
+import com.pitchpulse.data.home.HomeContentConfig
 import com.pitchpulse.data.model.FootballQuote
 import com.pitchpulse.data.model.LeagueTodaySummary
 import com.pitchpulse.data.model.QuizQuestion
@@ -22,19 +25,41 @@ fun LeagueTodayCard(summary: LeagueTodaySummary) {
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = AppCard)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "🏆 ${summary.name}",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = TextPrimary
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            val label = if (summary.matchCount == 1) "match" else "matches"
-            Text(
-                text = "${summary.matchCount} $label today",
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary
-            )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(44.dp),
+                shape = RoundedCornerShape(10.dp),
+                color = AppSurface
+            ) {
+                AsyncImage(
+                    model = summary.logoUrl,
+                    contentDescription = summary.name,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(6.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                )
+            }
+            Spacer(modifier = Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = summary.name,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = TextPrimary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                val label = if (summary.matchCount == 1) "match" else "matches"
+                Text(
+                    text = "${summary.matchCount} $label today",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
+            }
         }
     }
 }
@@ -94,9 +119,13 @@ fun FootballFactCard(fact: String) {
 @Composable
 fun FootballQuizCard(
     quiz: QuizQuestion,
+    questionNumber: Int,
+    totalQuestions: Int,
+    quizCompleted: Boolean,
     selectedOptionIndex: Int?,
     onOptionSelected: (Int) -> Unit,
-    onNextQuestion: () -> Unit
+    onNextQuestion: () -> Unit,
+    onRestartQuiz: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -104,17 +133,50 @@ fun FootballQuizCard(
         colors = CardDefaults.cardColors(containerColor = AppCard)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "Football Quiz",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = TextPrimary
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = quiz.question,
-                style = MaterialTheme.typography.bodyLarge,
-                color = TextPrimary
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Football Quiz",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = TextPrimary
+                )
+                if (!quizCompleted) {
+                    Text(
+                        text = "Q$questionNumber/$totalQuestions",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = AppAccentMuted
+                    )
+                }
+            }
+            if (!quizCompleted) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = HomeContentConfig.difficultyLabel(quiz.difficulty),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = AppAccent
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = quiz.question,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = TextPrimary
+                )
+            }
+            if (quizCompleted) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "You finished all $totalQuestions questions for today. Come back tomorrow for a new set.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                TextButton(onClick = onRestartQuiz) {
+                    Text("Play again", color = AppAccent)
+                }
+            } else {
             Spacer(modifier = Modifier.height(12.dp))
             quiz.options.forEachIndexed { index, option ->
                 val answered = selectedOptionIndex != null
@@ -163,9 +225,14 @@ fun FootballQuizCard(
                     color = if (correct) AppAccent else AppError
                 )
                 Spacer(modifier = Modifier.height(8.dp))
+                val isLast = questionNumber >= totalQuestions
                 TextButton(onClick = onNextQuestion) {
-                    Text("Next question", color = AppAccent)
+                    Text(
+                        if (isLast) "Finish quiz" else "Next question",
+                        color = AppAccent
+                    )
                 }
+            }
             }
         }
     }

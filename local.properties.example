@@ -1,5 +1,14 @@
-# Copy this file to local.properties and fill in your keys.
-# local.properties is gitignored and must never be committed.
+# Live Scores - Environment Setup
+#
+# Option 1 (Recommended): Use .env file
+#   1. Copy .env.example to .env
+#   2. Fill in your API keys in .env
+#
+# Option 2: Use local.properties (legacy)
+#   1. Copy this file to local.properties
+#   2. Fill in your API keys
+#
+# NEVER commit .env or local.properties to version control.
 
 sdk.dir=/path/to/Android/Sdk
 

@@ -45,7 +45,8 @@ data class HomeAiPayload(
 data class QuizQuestionDto(
     val question: String,
     val options: List<String>,
-    @SerialName("correctIndex") val correctIndex: Int
+    @SerialName("correctIndex") val correctIndex: Int,
+    val difficulty: Int = 1
 )
 
 @Serializable
