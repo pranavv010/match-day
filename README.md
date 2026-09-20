@@ -10,7 +10,7 @@
 ---
 
 ## ⬇️Download the App here 👇
-https://github.com/pranavv010/match-day/archive/refs/tags/v1.2.zip
+https://github.com/pranavv010/match-day/releases/download/v1.2/Match-Day-V1.2.apk
 
 ## 🌟 Features
 
